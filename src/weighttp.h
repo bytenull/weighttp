@@ -37,6 +37,7 @@
 #define W_REALLOC(p, t, n) ((t*) realloc(p, (n) * sizeof(t)))
 #define W_ERROR(f, ...) fprintf(stderr, "error: " f "\n", __VA_ARGS__)
 #define UNUSED(x) ( (void)(x) )
+#define DEFAULT_METHOD "GET"
 
 struct Config;
 typedef struct Config Config;
@@ -56,7 +57,7 @@ struct Config {
 	uint8_t thread_count;
 	uint16_t concur_count;
 	uint8_t keep_alive;
-
+	char *method;
 	char *request;
 	uint32_t request_size;
 	struct addrinfo *saddr;

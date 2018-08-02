@@ -17,6 +17,7 @@ static void show_help(void) {
 	printf("  -n num   number of requests    (mandatory)\n");
 	printf("  -t num   threadcount           (default: 1)\n");
 	printf("  -c num   concurrent clients    (default: 1)\n");
+	printf("  -m str   method		 (default: GET)\n");
 	printf("  -k       keep alive            (default: no)\n");
 	printf("  -6       use ipv6              (default: no)\n");
 	printf("  -H str   add header to request\n");
@@ -70,7 +71,7 @@ static struct addrinfo *resolve_host(char *hostname, uint16_t port, uint8_t use_
 	return res;
 }
 
-static char *forge_request(char *url, char keep_alive, char **host, uint16_t *port, char **headers, uint8_t headers_num) {
+static char *forge_request(char *url, char keep_alive,char* method, char **host, uint16_t *port, char **headers, uint8_t headers_num) {
 	char *c, *end;
 	char *req;
 	uint32_t len;
@@ -133,7 +134,8 @@ static char *forge_request(char *url, char keep_alive, char **host, uint16_t *po
 		url = "/";
 
 	// total request size
-	len = strlen("GET HTTP/1.1\r\nHost: :65536\r\nConnection: keep-alive\r\n\r\n") + 1;
+	len += strlen(method);
+	len += strlen(" HTTP/1.1\r\nHost: :65536\r\nConnection: keep-alive\r\n\r\n") + 1;
 	len += strlen(*host);
 	len += strlen(url);
 
@@ -167,8 +169,9 @@ static char *forge_request(char *url, char keep_alive, char **host, uint16_t *po
 		len += strlen("User-Agent: weighttp/" PACKAGE_VERSION "\r\n");
 
 	req = W_MALLOC(char, len);
-
-	strcpy(req, "GET ");
+	
+	strcpy(req, method);
+	strcat(req, " ");
 	strcat(req, url);
 	strcat(req, " HTTP/1.1\r\nHost: ");
 	if (header_host) {
@@ -195,7 +198,6 @@ static char *forge_request(char *url, char keep_alive, char **host, uint16_t *po
 		strcat(req, "Connection: keep-alive\r\n\r\n");
 	else
 		strcat(req, "Connection: close\r\n\r\n");
-
 	return req;
 }
 
@@ -246,8 +248,9 @@ int main(int argc, char *argv[]) {
 	config.concur_count = 1;
 	config.req_count = 0;
 	config.keep_alive = 0;
+	config.method = DEFAULT_METHOD;
 
-	while ((opt = getopt(argc, argv, ":hv6kn:t:c:H:")) != -1) {
+	while ((opt = getopt(argc, argv, ":hv6kn:t:c:Hm:")) != -1) {
 		switch (opt) {
 			case 'h':
 				show_help();
@@ -259,6 +262,9 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'k':
 				config.keep_alive = 1;
+				break;
+			case 'm':
+				config.method = optarg;
 				break;
 			case 'n':
 				config.req_count = str_to_uint64(optarg);
@@ -324,7 +330,7 @@ int main(int argc, char *argv[]) {
 		return 2;
 	}
 
-	if (NULL == (config.request = forge_request(argv[optind], config.keep_alive, &host, &port, headers, headers_num))) {
+	if (NULL == (config.request = forge_request(argv[optind], config.keep_alive, config.method, &host, &port, headers, headers_num))) {
 		return 1;
 	}
 
